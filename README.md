@@ -53,6 +53,20 @@ end
 With this package, we can apply `@fused` to reduce the number of reads and preserve the memory layout:
 
 ```julia
+import MultiBroadcastFusion as MBF
+
+# `@fused` calls `Base.copyto!(::MBF.FusedMultiBroadcast)`
+# So we must define `copyto!` for a subtype of `AbstractFusedMultiBroadcast`
+function Base.copyto!(fmb::MBF.FusedMultiBroadcast)
+    pairs = fmb.pairs
+    destinations = map(x->x.first, pairs)
+    @inbounds for i in eachindex(destinations)
+        # does `@inline pair.first[i] = pair.second[i]` for all pairs
+        MBF.rcopyto_at!(pairs, i)
+    end
+    return nothing
+end
+
 x1 = rand(3,3)
 x2 = rand(3,3)
 x3 = rand(3,3)
@@ -61,7 +75,7 @@ y1 = rand(3,3)
 y2 = rand(3,3)
 
 # 4 reads, 2 writes
-@fused begin
+MBF.@fused begin
   @. y1 = x1 * x2 + x3 * x4
   @. y2 = x1 * x3 + x2 * x4
 end
