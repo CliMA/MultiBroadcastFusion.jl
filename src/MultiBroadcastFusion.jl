@@ -9,7 +9,7 @@ abstract type AbstractFusedMultiBroadcast end
 A mult-broadcast fusion object
 """
 struct FusedMultiBroadcast{T} <: AbstractFusedMultiBroadcast
-	pairs::T
+    pairs::T
 end
 
 # Base.@propagate_inbounds function rcopyto_at!(pair::Pair, i::CartesianIndex)
@@ -25,7 +25,7 @@ end
 #     return nothing
 # end
 Base.@propagate_inbounds function rcopyto_at!(pair::Pair, i...)
-    dest,src = pair.first, pair.second
+    dest, src = pair.first, pair.second
     @inbounds dest[i...] = src[i...]
     return nothing
 end
