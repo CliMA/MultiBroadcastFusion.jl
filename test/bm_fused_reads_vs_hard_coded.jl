@@ -48,6 +48,28 @@ function knl_multi_copyto_hard_coded!(X, Y, ::Val{nitems}) where {nitems}
     return nothing
 end
 
+function knl_multi_copyto_hard_coded!(X, Y, ::Val{nitems}) where {nitems}
+    (; x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = X
+    (; y1, y2, y3, y4, y5, y6, y7, y8, y9, y10) = Y
+    gidx = CUDA.threadIdx().x + (CUDA.blockIdx().x - 1) * CUDA.blockDim().x
+    if gidx < nitems
+        @inbounds begin
+            idx = gidx
+            y1[idx] = x1[idx] + x6[idx]
+            y2[idx] = x2[idx] + x7[idx]
+            y3[idx] = x3[idx] + x8[idx]
+            y4[idx] = x4[idx] + x9[idx]
+            y5[idx] = x5[idx] + x10[idx]
+            y6[idx] = y1[idx]
+            y7[idx] = y2[idx]
+            y8[idx] = y3[idx]
+            y9[idx] = y4[idx]
+            y10[idx] = y5[idx]
+        end
+    end
+    return nothing
+end
+
 # ===========================================
 
 has_cuda = CUDA.has_cuda()
@@ -75,7 +97,7 @@ end
 function perf_kernel_fused!(X, Y)
     (; x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = X
     (; y1, y2, y3, y4, y5, y6, y7, y8, y9, y10) = Y
-    MBF.@fused begin
+    @fused begin
         @. y1 = x1 + x2 + x3 + x4
         @. y2 = x2 + x3 + x4 + x5
         @. y3 = x3 + x4 + x5 + x6

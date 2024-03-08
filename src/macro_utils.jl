@@ -5,27 +5,20 @@ function materialize_args(expr::Expr)
     return (expr.args[2], expr.args[3])
 end
 
-function fused(expr) end
-
-macro fused(expr)
-    _pairs = gensym()
-    quote
-        $_pairs = $(esc(fused_pairs(expr)))
-        Base.copyto!(FusedMultiBroadcast($_pairs))
-    end
-end
-
 macro fused_pairs(expr)
     esc(fused_pairs(expr))
 end
 
 function _fused_pairs(expr::Expr)
-    @assert expr.head == :block
+    # @assert expr.head == :block
     exprs_out = []
     for _expr in expr.args
         # TODO: should we retain LineNumberNode?
+        if _expr isa Symbol # ????????
+            return ""
+        end
         _expr isa LineNumberNode && continue
-        @assert _expr isa Expr
+        # @assert _expr isa Expr
         if _expr.head == :macrocall && _expr.args[1] == Symbol("@__dot__")
             se = code_lowered_single_expression(_expr)
             margs = materialize_args(se)
@@ -40,16 +33,6 @@ function _fused_pairs(expr::Expr)
 end
 
 fused_pairs(expr::Expr) = Meta.parse(_fused_pairs(expr))
-
-macro fused_multibroadcast(expr)
-    esc(fused_multibroadcast("MultiBroadcastFusion.FusedMultiBroadcast", expr))
-end
-
-macro fused_multibroadcast(fmb, expr)
-    esc(fused_multibroadcast(fmb, expr))
-end
-fused_multibroadcast(fmb, expr::Expr) =
-    Meta.parse("$(fmb)($(_fused_pairs(expr)))")
 
 function build_expr(s::String, code_remain)
     n_subs = count("%", s)

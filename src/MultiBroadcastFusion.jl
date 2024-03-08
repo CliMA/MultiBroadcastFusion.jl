@@ -1,29 +1,5 @@
 module MultiBroadcastFusion
 
-
-abstract type AbstractFusedMultiBroadcast end
-
-"""
-	FusedMultiBroadcast(pairs::Tuple)
-
-A mult-broadcast fusion object
-"""
-struct FusedMultiBroadcast{T} <: AbstractFusedMultiBroadcast
-    pairs::T
-end
-
-# Base.@propagate_inbounds function rcopyto_at!(pair::Pair, i::CartesianIndex)
-#     dest,src = pair.first, pair.second
-#     @inbounds src_i = src[i]
-#     @inbounds dest[i] = src_i
-#     return nothing
-# end
-# Base.@propagate_inbounds function rcopyto_at!(pair::Pair, i::Int)
-#     dest,src = pair.first, pair.second
-#     @inbounds src_i = src[i]
-#     @inbounds dest[i] = src_i
-#     return nothing
-# end
 Base.@propagate_inbounds function rcopyto_at!(pair::Pair, i...)
     dest, src = pair.first, pair.second
     @inbounds dest[i...] = src[i...]
@@ -38,5 +14,51 @@ Base.@propagate_inbounds rcopyto_at!(pairs::Tuple{<:Any}, i...) =
 @inline rcopyto_at!(pairs::Tuple{}, i...) = nothing
 
 include("macro_utils.jl")
+
+"""
+    @make_fused type_name fused_named
+
+This macro
+ - Imports MultiBroadcastFusion
+ - Defines a type, `type_name`
+ - Defines a macro, `@fused_name`
+
+This allows users to flexibility
+to customize their broadcast fusion.
+
+# Example
+```julia
+import MultiBroadcastFusion as MBF
+MBF.@make_fused MyFusedBroadcast my_fused
+
+Base.copyto!(fmb::MyFusedBroadcast) = println("You're ready to fuse!")
+
+x1 = rand(3,3)
+y1 = rand(3,3)
+y2 = rand(3,3)
+
+# 4 reads, 2 writes
+@my_fused begin
+  @. y1 = x1
+  @. y2 = x1
+end
+```
+"""
+macro make_fused(type_name, fused_name)
+    t = esc(type_name)
+    f = esc(fused_name)
+    return quote
+        struct $t{T <: Tuple}
+            pairs::T
+        end
+        macro $f(expr)
+            _pairs = esc($(fused_pairs)(expr))
+            t = $t
+            quote
+                Base.copyto!($t($_pairs))
+            end
+        end
+    end
+end
 
 end # module MultiBroadcastFusion

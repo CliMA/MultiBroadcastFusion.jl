@@ -22,10 +22,11 @@ device(x) = GPU()
 # in every file without getting warnings. To silence the warnings,
 # we've wrapped this in an if-statement.
 # WARNING:
-#    If you've updated `Base.copyto!(fmb::MBF.FusedMultiBroadcast)`,
+#    If you've updated `Base.copyto!(fmb::FusedMultiBroadcast)`,
 #    then Revise will not update this method!!!
-if !hasmethod(Base.copyto!, Tuple{<:MBF.FusedMultiBroadcast})
-    function Base.copyto!(fmb::MBF.FusedMultiBroadcast)
+MBF.@make_fused FusedMultiBroadcast fused
+if !hasmethod(Base.copyto!, Tuple{<:FusedMultiBroadcast})
+    function Base.copyto!(fmb::FusedMultiBroadcast)
         pairs = fmb.pairs
         dest = first(pairs).first
         @assert device(dest) isa CPU || device(dest) isa GPU
@@ -45,7 +46,7 @@ if !hasmethod(Base.copyto!, Tuple{<:MBF.FusedMultiBroadcast})
 end
 
 function copyto_cpu!(pairs::T, ei::EI) where {T, EI}
-    @inbounds for i in ei
+    @inbounds @simd ivdep for i in ei
         MBF.rcopyto_at!(pairs, i)
     end
     return nothing
