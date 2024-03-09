@@ -47,5 +47,5 @@ end
             thermo_params,
         ),
     ))
-    @test_broken MBF.code_lowered_single_expression(expr_in) == expr_out
+    @test MBF.code_lowered_single_expression(expr_in) == expr_out
 end
