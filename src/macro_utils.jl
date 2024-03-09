@@ -14,15 +14,27 @@ function _fused_pairs(expr::Expr)
     exprs_out = []
     for _expr in expr.args
         # TODO: should we retain LineNumberNode?
-        if _expr isa Symbol # ????????
-            return ""
-        end
+        # if _expr isa Symbol # ????????
+        #     error("???")
+        #     return ""
+        # end
         _expr isa LineNumberNode && continue
-        # @assert _expr isa Expr
+        if _expr.head == :for
+            error("Loops are not allowed inside fused blocks")
+        end
+        if _expr.head == :if
+            error("If-statements are not allowed inside fused blocks")
+        end
+        if _expr.head == :call
+            error("Function calls are not allowed inside fused blocks")
+        end
         if _expr.head == :macrocall && _expr.args[1] == Symbol("@__dot__")
             se = code_lowered_single_expression(_expr)
             margs = materialize_args(se)
             push!(exprs_out, :(Pair($(margs[1]), $(margs[2]))))
+        else
+            @show _expr
+            error("Uncaught edge case")
         end
     end
     if length(exprs_out) == 1
