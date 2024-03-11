@@ -64,6 +64,57 @@ bar() = nothing
     ) MBF.fused_pairs(expr_in)
 end
 
+@testset "Non-broadcast variable assignments" begin
+    # Non-broadcast variable assignments is not allowed, because
+    # this could lead to subtle bugs (order of compute).
+    expr_in = quote
+        @. y1 = x1 + x2 + x3 + x4
+        x1 = x2
+        @. y1 = x1 + x2 + x3 + x4
+    end
+    @test_throws ErrorException(
+        "Non-broadcast assignments are not allowed inside fused blocks",
+    ) MBF.fused_pairs(expr_in)
+end
+
+@testset "No let-blocks" begin
+    # Let-blocks could hide other non-allowed things
+    expr_in = quote
+        @. y1 = x1 + x2 + x3 + x4
+        let z = 1
+        end
+        @. y1 = x1 + x2 + x3 + x4
+    end
+    @test_throws ErrorException(
+        "Let-blocks are not allowed inside fused blocks",
+    ) MBF.fused_pairs(expr_in)
+end
+
+@testset "Dangling symbols" begin
+    # While inaucuous, we prohibit dangling symbols
+    expr_in = quote
+        @. y1 = x1 + x2 + x3 + x4
+        :a
+        @. y1 = x1 + x2 + x3 + x4
+    end
+    @test_throws ErrorException(
+        "Dangling symbols are not allowed inside fused blocks",
+    ) MBF.fused_pairs(expr_in)
+end
+
+@testset "quote" begin
+    # Not sure why this would be needed, so
+    # we don't allow quotes inside fused blocks.
+    expr_in = quote
+        @. y1 = x1 + x2 + x3 + x4
+        quote end
+        @. y1 = x1 + x2 + x3 + x4
+    end
+    @test_throws ErrorException("Quotes are not allowed inside fused blocks") MBF.fused_pairs(
+        expr_in,
+    )
+end
+
 @testset "Comments" begin
     expr_in = quote
         @. y1 = x1 + x2 + x3 + x4
