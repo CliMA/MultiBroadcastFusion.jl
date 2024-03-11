@@ -18,22 +18,31 @@ function _fused_pairs(expr::Expr)
         #     error("???")
         #     return ""
         # end
+        if _expr isa QuoteNode
+            error("Dangling symbols are not allowed inside fused blocks")
+        end
         _expr isa LineNumberNode && continue
         if _expr.head == :for
             error("Loops are not allowed inside fused blocks")
-        end
-        if _expr.head == :if
+        elseif _expr.head == :if
             error("If-statements are not allowed inside fused blocks")
-        end
-        if _expr.head == :call
+        elseif _expr.head == :call
             error("Function calls are not allowed inside fused blocks")
+        elseif _expr.head == :(=)
+            error(
+                "Non-broadcast assignments are not allowed inside fused blocks",
+            )
+        elseif _expr.head == :let
+            error("Let-blocks are not allowed inside fused blocks")
+        elseif _expr.head == :quote
+            error("Quotes are not allowed inside fused blocks")
         end
         if _expr.head == :macrocall && _expr.args[1] == Symbol("@__dot__")
             se = code_lowered_single_expression(_expr)
             margs = materialize_args(se)
             push!(exprs_out, :(Pair($(margs[1]), $(margs[2]))))
         else
-            @show _expr
+            @show dump(_expr)
             error("Uncaught edge case")
         end
     end
