@@ -45,12 +45,24 @@ if !hasmethod(Base.copyto!, Tuple{<:FusedMultiBroadcast})
     end
 end
 
+# This is better than the baseline.
 function copyto_cpu!(pairs::T, ei::EI) where {T, EI}
-    @inbounds @simd ivdep for i in ei
-        MBF.rcopyto_at!(pairs, i)
+    for (dest, bc) in pairs
+        @inbounds @simd ivdep for i in ei
+            dest[i] = bc[i]
+        end
     end
     return nothing
 end
+
+# This should, in theory be better, but it seems like inlining is
+# failing somewhere.
+# function copyto_cpu!(pairs::T, ei::EI) where {T, EI}
+#     @inbounds @simd ivdep for i in ei
+#         MBF.rcopyto_at!(pairs, i)
+#     end
+#     return nothing
+# end
 
 import CUDA
 import Adapt
