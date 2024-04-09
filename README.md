@@ -82,3 +82,24 @@ end
 ```
 
 This is achieved by fusing the loops and inlining with the given data, resulting in the compiler being able to perform Common-SubExpression Elimination (CSE) on the memory loads.
+
+## Writing custom macros
+
+Users can write custom macros with, for example,
+
+```julia
+import MultiBroadcastFusion as MBF
+
+struct FusedMultiBroadcast{T}
+    pairs::T
+end
+macro get_fused_multi_broadcast(expr)
+    _pairs = gensym()
+    quote
+        $_pairs = $(esc(MBF.fused_pairs(expr)))
+        FusedMultiBroadcast($_pairs)
+    end
+end
+```
+
+This can be helpful for inspecting multibroadcast objects.
