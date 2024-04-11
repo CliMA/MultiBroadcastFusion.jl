@@ -123,7 +123,7 @@ end
         @. y2 = x2 + x3 + x4 + x5
     end
 
-    expr_out = :((
+    expr_out = :(tuple(
         Pair(y1, Base.broadcasted(+, x1, x2, x3, x4)),
         Pair(y2, Base.broadcasted(+, x2, x3, x4, x5)),
     ))
@@ -132,5 +132,5 @@ end
 
 @testset "Empty" begin
     expr_in = quote end
-    @test MBF.fused_pairs(expr_in) == :(())
+    @test MBF.fused_pairs(expr_in) == :(tuple())
 end
