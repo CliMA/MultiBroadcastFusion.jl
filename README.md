@@ -55,6 +55,7 @@ With this package, we can apply `@fused` to reduce the number of reads and prese
 ```julia
 import MultiBroadcastFusion as MBF
 
+MBF.@make_type FusedMultiBroadcast
 MBF.@make_fused FusedMultiBroadcast fused
 # Now, `@fused` will call `Base.copyto!(::FusedMultiBroadcast)`. Let's define it:
 function Base.copyto!(fmb::FusedMultiBroadcast)
