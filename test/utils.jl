@@ -24,6 +24,7 @@ device(x) = GPU()
 # WARNING:
 #    If you've updated `Base.copyto!(fmb::FusedMultiBroadcast)`,
 #    then Revise will not update this method!!!
+MBF.@make_type FusedMultiBroadcast
 MBF.@make_fused FusedMultiBroadcast fused
 if !hasmethod(Base.copyto!, Tuple{<:FusedMultiBroadcast})
     function Base.copyto!(fmb::FusedMultiBroadcast)
