@@ -4,8 +4,6 @@
 
 # General case: do nothing (identity)
 transform_flex(x, sym) = x
-transform_flex(x::Core.SSAValue, sym) = transform_flex(code[x.id], sym)
-transform_flex(x::Core.ReturnNode, sym) = transform_flex(code[x.val.id], sym)
 transform_flex(s::Symbol, sym) = s
 # Expression: recursively transform_flex for Expr
 function transform_flex(e::Expr, sym)

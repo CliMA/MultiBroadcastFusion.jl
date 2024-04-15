@@ -4,8 +4,6 @@
 
 # General case: do nothing (identity)
 transform(x) = x
-transform(x::Core.SSAValue) = transform(code[x.id])
-transform(x::Core.ReturnNode) = transform(code[x.val.id])
 transform(s::Symbol) = s
 # Expression: recursively transform for Expr
 function transform(e::Expr)
