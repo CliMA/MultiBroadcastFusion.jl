@@ -78,7 +78,7 @@ Users can write custom implementations, using the `@make_type` and `@make_fused`
 import MultiBroadcastFusion as MBF
 
 MBF.@make_type MyFusedMultiBroadcast
-MBF.@make_fused MyFusedMultiBroadcast my_fused
+MBF.@make_fused MBF.fused_pairs MyFusedMultiBroadcast my_fused
 # Now, `@fused` will call `Base.copyto!(::MyFusedMultiBroadcast)`. Let's define it:
 function Base.copyto!(fmb::MyFusedMultiBroadcast)
     pairs = fmb.pairs
