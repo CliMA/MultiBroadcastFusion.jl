@@ -17,6 +17,28 @@ function transform_flex(e::Expr, sym)
     end
 end
 
+"""
+    fused_pairs_flexible
+
+Function that fuses broadcast expressions
+that stride flow control logic. For example:
+
+```julia
+import MultiBroadcastFusion as MBF
+MBF.@make_type MyFusedMultiBroadcast
+MBF.@make_fused fused_pairs_flexible MyFusedMultiBroadcast fused_flexible
+```
+
+To use `MultiBroadcastFusion`'s `@fused_flexible` macro:
+```
+import MultiBroadcastFusion as MBF
+x = rand(1);y = rand(1);z = rand(1);
+MBF.@fused_flexible begin
+    @. x += y
+    @. z += y
+end
+```
+"""
 function fused_pairs_flexible(expr::Expr, sym::Symbol)
     check_restrictions_flexible(expr)
     e = transform_flex(expr, sym)

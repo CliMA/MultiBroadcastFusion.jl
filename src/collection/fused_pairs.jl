@@ -17,6 +17,28 @@ function transform(e::Expr)
     end
 end
 
+"""
+    fused_pairs
+
+Function that fuses broadcast expressions that
+are immediately one after another. For example:
+
+```julia
+import MultiBroadcastFusion as MBF
+MBF.@make_type MyFusedMultiBroadcast
+MBF.@make_fused fused_pairs MyFusedMultiBroadcast fused
+```
+
+To use `MultiBroadcastFusion`'s `@fused` macro:
+```
+import MultiBroadcastFusion as MBF
+x = rand(1);y = rand(1);z = rand(1);
+MBF.@fused begin
+    @. x += y
+    @. z += y
+end
+```
+"""
 function fused_pairs(expr::Expr)
     check_restrictions(expr)
     e = transform(expr)
