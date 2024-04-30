@@ -4,9 +4,9 @@ using Revise; include(joinpath("test", "bm_fused_reads_vs_hard_coded.jl"))
 include("utils.jl")
 
 # =========================================== hard-coded implementations
-perf_kernel_hard_coded!(X, Y) = perf_kernel_hard_coded!(X, Y, device(X.x1))
+perf_kernel_hard_coded!(X, Y) = perf_kernel_hard_coded!(X, Y, MBF.device(X.x1))
 
-function perf_kernel_hard_coded!(X, Y, ::CPU)
+function perf_kernel_hard_coded!(X, Y, ::MBF.CPU)
     (; x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = X
     (; y1, y2, y3, y4, y5, y6, y7, y8, y9, y10) = Y
     @inbounds for i in eachindex(x1)
@@ -19,7 +19,7 @@ function perf_kernel_hard_coded!(X, Y, ::CPU)
         y7[i] = x7[i] + x8[i] + x9[i] + x10[i]
     end
 end
-function perf_kernel_hard_coded!(X, Y, ::GPU)
+function perf_kernel_hard_coded!(X, Y, ::MBF.GPU)
     x1 = X.x1
     nitems = length(parent(x1))
     max_threads = 256 # can be higher if conditions permit
@@ -76,7 +76,7 @@ end
 function perf_kernel_fused!(X, Y)
     (; x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = X
     (; y1, y2, y3, y4, y5, y6, y7, y8, y9, y10) = Y
-    @fused begin
+    MBF.@fused begin
         @. y1 = x1 + x2 + x3 + x4
         @. y2 = x2 + x3 + x4 + x5
         @. y3 = x3 + x4 + x5 + x6
