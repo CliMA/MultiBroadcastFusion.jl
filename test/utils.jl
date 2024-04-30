@@ -21,7 +21,7 @@ function benchmark_kernel!(f!, args...)
     show(stdout, MIME("text/plain"), trial)
 end
 benchmark_kernel!(::MBF.GPU, f!, args...) =
-    CUDA.@sync BenchmarkTools.@benchmark $f!($args...);
+    BenchmarkTools.@benchmark CUDA.@sync $f!($args...);
 benchmark_kernel!(::MBF.CPU, f!, args...) =
     BenchmarkTools.@benchmark $f!($args...);
 
