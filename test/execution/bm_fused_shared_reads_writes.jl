@@ -1,5 +1,5 @@
 #=
-using Revise; include(joinpath("test", "fused_reads_writes.jl"))
+using Revise; include(joinpath("test", "execution", "fused_reads_writes.jl"))
 =#
 
 include("utils.jl")
@@ -23,7 +23,7 @@ end
 function perf_kernel_shared_reads_writes_fused!(X, Y)
     (; x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = X
     (; y1, y2, y3, y4, y5, y6, y7, y8, y9, y10) = Y
-    MBF.@fused begin
+    MBF.@fused_direct begin
         @. y1 = x1 + x6
         @. y2 = x2 + x7
         @. y3 = x3 + x8

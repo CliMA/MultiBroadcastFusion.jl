@@ -1,6 +1,6 @@
 @make_type FusedMultiBroadcast
-@make_fused fused_pairs FusedMultiBroadcast fused
-@make_fused fused_pairs_flexible FusedMultiBroadcast fused_flexible
+@make_fused fused_direct FusedMultiBroadcast fused_direct
+@make_fused fused_assemble FusedMultiBroadcast fused_assemble
 
 struct CPU end
 struct GPU end

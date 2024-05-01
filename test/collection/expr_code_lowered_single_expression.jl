@@ -1,5 +1,5 @@
 #=
-using Revise; include(joinpath("test", "expr_code_lowered_single_expression.jl"))
+using Revise; include(joinpath("test", "collection", "expr_code_lowered_single_expression.jl"))
 =#
 using Test
 import MultiBroadcastFusion as MBF

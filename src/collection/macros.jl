@@ -14,11 +14,11 @@ macro make_type(type_name)
 end
 
 """
-    @make_fused fusion_type type_name fused_named
+    @make_fused fusion_style type_name fused_named
 
 This macro
  - Defines a type type_name
- - Defines a macro, `@fused_name`, using the fusion type `fusion_type`
+ - Defines a macro, `@fused_name`, using the fusion type `fusion_style`
 
 This allows users to flexibility
 to customize their broadcast fusion.
@@ -27,7 +27,7 @@ to customize their broadcast fusion.
 ```julia
 import MultiBroadcastFusion as MBF
 MBF.@make_type MyFusedBroadcast
-MBF.@make_fused MBF.fused_pairs MyFusedBroadcast my_fused
+MBF.@make_fused MBF.fused_direct MyFusedBroadcast my_fused
 
 Base.copyto!(fmb::MyFusedBroadcast) = println("You're ready to fuse!")
 
@@ -42,12 +42,12 @@ y2 = rand(3,3)
 end
 ```
 """
-macro make_fused(fusion_type, type_name, fused_name)
+macro make_fused(fusion_style, type_name, fused_name)
     t = esc(type_name)
     f = esc(fused_name)
     return quote
         macro $f(expr)
-            _pairs = esc($(fusion_type)(expr))
+            _pairs = esc($(fusion_style)(expr))
             t = $t
             quote
                 Base.copyto!($t($_pairs))

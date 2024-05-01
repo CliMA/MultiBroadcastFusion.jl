@@ -1,5 +1,5 @@
 #=
-using Revise; include(joinpath("test", "expr_materialize_args.jl"))
+using Revise; include(joinpath("test", "collection", "expr_materialize_args.jl"))
 =#
 using Test
 import MultiBroadcastFusion as MBF

@@ -18,28 +18,52 @@ function transform(e::Expr)
 end
 
 """
-    fused_pairs
+    fused_direct(expr::Expr)
 
-Function that fuses broadcast expressions that
-are immediately one after another. For example:
+Directly transforms the input expression
+into a tuple of `Pair`s, containing (firsts)
+the destination of broadcast expressions and
+(seconds) the broadcasted objects.
 
+For example:
 ```julia
 import MultiBroadcastFusion as MBF
-MBF.@make_type MyFusedMultiBroadcast
-MBF.@make_fused fused_pairs MyFusedMultiBroadcast fused
+using Test
+expr_in = quote
+    @. y1 = x1 + x2 + x3 + x4
+    @. y2 = x2 + x3 + x4 + x5
+end
+
+expr_out = :(tuple(
+    Pair(y1, Base.broadcasted(+, x1, x2, x3, x4)),
+    Pair(y2, Base.broadcasted(+, x2, x3, x4, x5)),
+))
+@test MBF.fused_direct(expr_in) == expr_out
 ```
 
-To use `MultiBroadcastFusion`'s `@fused` macro:
+This can be used to make a custom kernel fusion macro:
 ```
 import MultiBroadcastFusion as MBF
-x = rand(1);y = rand(1);z = rand(1);
-MBF.@fused begin
-    @. x += y
-    @. z += y
+import MultiBroadcastFusion: fused_direct
+MBF.@make_type MyFusedBroadcast
+MBF.@make_fused fused_direct MyFusedBroadcast my_fused
+
+Base.copyto!(fmb::MyFusedBroadcast) = println("You're ready to fuse!")
+
+x1 = rand(3,3)
+y1 = rand(3,3)
+y2 = rand(3,3)
+
+# 4 reads, 2 writes
+@my_fused begin
+  @. y1 = x1
+  @. y2 = x1
 end
 ```
+
+Also see [`fused_assemble`](@ref)
 """
-function fused_pairs(expr::Expr)
+function fused_direct(expr::Expr)
     check_restrictions(expr)
     e = transform(expr)
     @assert e.head == :block
