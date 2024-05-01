@@ -3,7 +3,7 @@ using Revise; include(joinpath("perf", "flame.jl"))
 =#
 
 import MultiBroadcastFusion as MBF
-include(joinpath(pkgdir(MBF), "test", "utils.jl"))
+include(joinpath(pkgdir(MBF), "test", "execution", "utils.jl"))
 
 # ===========================================
 
