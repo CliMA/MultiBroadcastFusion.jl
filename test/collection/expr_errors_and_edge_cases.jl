@@ -1,5 +1,5 @@
 #=
-using Revise; include(joinpath("test", "expr_errors_and_edge_cases.jl"))
+using Revise; include(joinpath("test", "collection" "expr_errors_and_edge_cases.jl"))
 =#
 using Test
 import MultiBroadcastFusion as MBF
@@ -21,7 +21,7 @@ import MultiBroadcastFusion as MBF
         end
         @. y1 = x1 + x2 + x3 + x4
     end
-    @test_throws ErrorException("Loops are not allowed inside fused blocks") MBF.fused_pairs(
+    @test_throws ErrorException("Loops are not allowed inside fused blocks") MBF.fused_direct(
         expr_in,
     )
 end
@@ -47,7 +47,7 @@ struct Foo end
     end
     @test_throws ErrorException(
         "If-statements are not allowed inside fused blocks",
-    ) MBF.fused_pairs(expr_in)
+    ) MBF.fused_direct(expr_in)
 end
 
 bar() = nothing
@@ -61,7 +61,7 @@ bar() = nothing
     end
     @test_throws ErrorException(
         "Function calls are not allowed inside fused blocks",
-    ) MBF.fused_pairs(expr_in)
+    ) MBF.fused_direct(expr_in)
 end
 
 @testset "Non-broadcast variable assignments" begin
@@ -74,7 +74,7 @@ end
     end
     @test_throws ErrorException(
         "Non-broadcast assignments are not allowed inside fused blocks",
-    ) MBF.fused_pairs(expr_in)
+    ) MBF.fused_direct(expr_in)
 end
 
 @testset "No let-blocks" begin
@@ -87,7 +87,7 @@ end
     end
     @test_throws ErrorException(
         "Let-blocks are not allowed inside fused blocks",
-    ) MBF.fused_pairs(expr_in)
+    ) MBF.fused_direct(expr_in)
 end
 
 @testset "Dangling symbols" begin
@@ -99,7 +99,7 @@ end
     end
     @test_throws ErrorException(
         "Dangling symbols are not allowed inside fused blocks",
-    ) MBF.fused_pairs(expr_in)
+    ) MBF.fused_direct(expr_in)
 end
 
 @testset "quote" begin
@@ -110,7 +110,7 @@ end
         quote end
         @. y1 = x1 + x2 + x3 + x4
     end
-    @test_throws ErrorException("Quotes are not allowed inside fused blocks") MBF.fused_pairs(
+    @test_throws ErrorException("Quotes are not allowed inside fused blocks") MBF.fused_direct(
         expr_in,
     )
 end
@@ -127,10 +127,10 @@ end
         Pair(y1, Base.broadcasted(+, x1, x2, x3, x4)),
         Pair(y2, Base.broadcasted(+, x2, x3, x4, x5)),
     ))
-    @test MBF.fused_pairs(expr_in) == expr_out
+    @test MBF.fused_direct(expr_in) == expr_out
 end
 
 @testset "Empty" begin
     expr_in = quote end
-    @test MBF.fused_pairs(expr_in) == :(tuple())
+    @test MBF.fused_direct(expr_in) == :(tuple())
 end

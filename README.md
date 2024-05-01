@@ -50,7 +50,7 @@ for i in eachindex(x1,x2,x3,x4,y1,y2)
 end
 ```
 
-With this package, we can apply `@fused` to reduce the number of reads and preserve the memory layout:
+With this package, we can apply `@fused_direct` to reduce the number of reads and preserve the memory layout:
 
 ```julia
 import MultiBroadcastFusion as MBF
@@ -62,7 +62,7 @@ y1 = rand(3,3)
 y2 = rand(3,3)
 
 # 4 reads, 2 writes
-MBF.@fused begin
+MBF.@fused_direct begin
   @. y1 = x1 * x2 + x3 * x4
   @. y2 = x1 * x3 + x2 * x4
 end
@@ -76,10 +76,11 @@ Users can write custom implementations, using the `@make_type` and `@make_fused`
 
 ```julia
 import MultiBroadcastFusion as MBF
+import MultiBroadcastFusion: fused_direct
 
 MBF.@make_type MyFusedMultiBroadcast
-MBF.@make_fused MBF.fused_pairs MyFusedMultiBroadcast my_fused
-# Now, `@fused` will call `Base.copyto!(::MyFusedMultiBroadcast)`. Let's define it:
+MBF.@make_fused fused_direct MyFusedMultiBroadcast my_fused
+# Now, `@fused_direct` will call `Base.copyto!(::MyFusedMultiBroadcast)`. Let's define it:
 function Base.copyto!(fmb::MyFusedMultiBroadcast)
     pairs = fmb.pairs
     destinations = map(x->x.first, pairs)
@@ -117,7 +118,7 @@ end
 macro get_fused_multi_broadcast(expr)
     _pairs = gensym()
     quote
-        $_pairs = $(esc(MBF.fused_pairs(expr)))
+        $_pairs = $(esc(MBF.fused_direct(expr)))
         FusedMultiBroadcast($_pairs)
     end
 end
