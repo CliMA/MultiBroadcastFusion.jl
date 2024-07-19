@@ -1,7 +1,6 @@
 #=
 julia --project
-using TestEnv
-TestEnv.activate()
+using TestEnv; TestEnv.activate()
 using CUDA;
 ENV["PERFORM_BENCHMARK"]="true";
 
