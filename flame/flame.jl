@@ -7,8 +7,9 @@ include(joinpath(pkgdir(MBF), "test", "execution", "utils.jl"))
 
 # ===========================================
 
-has_cuda = CUDA.has_cuda()
-AType = has_cuda ? CUDA.CuArray : Array
+@static get(ENV, "USE_CUDA", nothing) == "true" && using CUDA
+use_cuda = @isdefined(CUDA) && CUDA.has_cuda() # will be true if you first run `using CUDA`
+AType = use_cuda ? CUDA.CuArray : Array
 # arr_size = (prod((50,5,5,6,50)),)
 arr_size = (50, 5, 5, 6, 50)
 X = get_arrays(:x, arr_size, AType)
