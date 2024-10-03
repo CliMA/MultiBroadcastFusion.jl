@@ -90,32 +90,11 @@ function test_kernel!(; fused!, unfused!, X, Y)
         y .= map(_ -> rand(), y)
     end
     X_fused = deepcopy(X)
-    X_unfused = deepcopy(X)
+    X_unfused = X
     Y_fused = deepcopy(Y)
-    Y_unfused = deepcopy(Y)
+    Y_unfused = Y
     fused!(X_fused, Y_fused)
     unfused!(X_unfused, Y_unfused)
-    @testset "Test correctness of $(nameof(typeof(fused!)))" begin
-        test_compare(X_fused, X_unfused)
-        test_compare(Y_fused, Y_unfused)
-    end
-end
-function test_kernel_args!(; fused!, unfused!, args)
-    (; X, Y) = args
-    for x in X
-        x .= rand(size(x)...)
-    end
-    for y in Y
-        y .= rand(size(y)...)
-    end
-    X_fused = deepcopy(X)
-    X_unfused = deepcopy(X)
-    Y_fused = deepcopy(Y)
-    Y_unfused = deepcopy(Y)
-    args_fused = (; X = X_fused, Y = Y_fused)
-    args_unfused = (; X = X_unfused, Y = Y_unfused)
-    fused!(args_fused)
-    unfused!(args_unfused)
     @testset "Test correctness of $(nameof(typeof(fused!)))" begin
         test_compare(X_fused, X_unfused)
         test_compare(Y_fused, Y_unfused)
