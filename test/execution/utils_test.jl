@@ -21,9 +21,14 @@ function __rprint_diff(io::IO, xi, yi; pc, xname, yname) # assume we can compute
         xs = xname * string(join(pc))
         ys = yname * string(join(pc))
         println(io, "==================== Difference found:")
-        println(io, "$xs: ", xi)
-        println(io, "$ys: ", yi)
-        println(io, "($xs .- $ys): ", (xi .- yi))
+        println(io, "maximum(abs.(Δ)) = $(maximum(abs.(xi .- yi)))")
+        println(io, "maximum(abs.(xi)) = $(maximum(abs.(xi)))")
+        println(io, "maximum(abs.(yi)) = $(maximum(abs.(yi)))")
+        println(io, "extrema(xi) = $(extrema(xi))")
+        println(io, "extrema(yi) = $(extrema(yi))")
+        # println(io, "$xs: ", xi)
+        # println(io, "$ys: ", yi)
+        # println(io, "($xs .- $ys): ", (xi .- yi))
     end
     return nothing
 end
@@ -56,11 +61,18 @@ end
 
 
 # Recursively compare contents of similar types
-_rcompare(pass, x::T, y::T) where {T} = pass && (x == y)
+function _rcompare(pass, x::T, y::T; use_cuda) where {T}
+    if use_cuda
+        return pass && (x ≈ y) # CUDA doesn't always satisfy ==
+    else
+        return pass && (x == y)
+    end
+end
 
-function _rcompare(pass, x::T, y::T) where {T <: NamedTuple}
+function _rcompare(pass, x::T, y::T; use_cuda) where {T <: NamedTuple}
     for pn in propertynames(x)
-        pass &= _rcompare(pass, getproperty(x, pn), getproperty(y, pn))
+        pass &=
+            _rcompare(pass, getproperty(x, pn), getproperty(y, pn); use_cuda)
     end
     return pass
 end
@@ -71,18 +83,16 @@ end
 Recursively compare given types via `==`.
 Returns `true` if `x == y` recursively.
 """
-rcompare(x::T, y::T) where {T <: NamedTuple} = _rcompare(true, x, y)
-rcompare(x, y) = false
+rcompare(x::T, y::T; use_cuda) where {T <: NamedTuple} =
+    _rcompare(true, x, y; use_cuda)
+rcompare(x, y; use_cuda) = false
 
-function test_compare(x, y)
-    if !rcompare(x, y)
-        @rprint_diff(x, y)
-    else
-        @test rcompare(x, y)
-    end
+function test_compare(x, y; use_cuda)
+    rcompare(x, y; use_cuda) || @rprint_diff(x, y)
+    @test rcompare(x, y; use_cuda)
 end
 
-function test_kernel!(; fused!, unfused!, X, Y)
+function test_kernel!(use_cuda; fused!, unfused!, X, Y)
     for x in X
         x .= map(_ -> rand(), x)
     end
@@ -96,7 +106,7 @@ function test_kernel!(; fused!, unfused!, X, Y)
     fused!(X_fused, Y_fused)
     unfused!(X_unfused, Y_unfused)
     @testset "Test correctness of $(nameof(typeof(fused!)))" begin
-        test_compare(X_fused, X_unfused)
-        test_compare(Y_fused, Y_unfused)
+        test_compare(X_fused, X_unfused; use_cuda)
+        test_compare(Y_fused, Y_unfused; use_cuda)
     end
 end
