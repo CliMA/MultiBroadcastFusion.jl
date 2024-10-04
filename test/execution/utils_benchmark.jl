@@ -60,6 +60,11 @@ trunc_time(s::String) = count(',', s) > 1 ? join(split(s, ",")[1:2], ",") : s
 
 import PrettyTables
 function tabulate_benchmark(bm)
+    perform_benchmark = get(ENV, "PERFORM_BENCHMARK", false) == "true"
+    if !perform_benchmark
+        @warn "Benchmark skipped, set `ENV[\"PERFORM_BENCHMARK\"] = true` to run benchmarks"
+        return nothing
+    end
     funcs = map(x -> strip(x.caller), bm.data)
     timings = map(x -> time_and_units_str(x.kernel_time_s), bm.data)
     n_reads_writes = map(x -> x.n_reads_writes, bm.data)
@@ -159,6 +164,11 @@ function benchmark_trial!(use_cuda, f!, X, Y)
 end
 
 function push_benchmark!(bm, use_cuda, f!, X, Y; n_reads_writes, problem_size)
+    perform_benchmark = get(ENV, "PERFORM_BENCHMARK", false) == "true"
+    if !perform_benchmark
+        @warn "Benchmark skipped, set `ENV[\"PERFORM_BENCHMARK\"] = true` to run benchmarks"
+        return nothing
+    end
     f!(X, Y) # compile first
     trial = benchmark_trial!(use_cuda, f!, X, Y)
     e = minimum(trial.times) * 1e-9 # to seconds

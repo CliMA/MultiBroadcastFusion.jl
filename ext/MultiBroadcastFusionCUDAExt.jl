@@ -9,20 +9,29 @@ MBF.device(x::CUDA.CuArray) = MBF.MBF_CUDA()
 function fused_copyto!(fmb::MBF.FusedMultiBroadcast, ::MBF.MBF_CUDA)
     (; pairs) = fmb
     dest = first(pairs).first
+    destinations = map(p -> p.first, pairs)
     nitems = length(parent(dest))
     max_threads = 256 # can be higher if conditions permit
     nthreads = min(max_threads, nitems)
     nblocks = cld(nitems, nthreads)
-    CUDA.@cuda threads = (nthreads) blocks = (nblocks) fused_copyto_kernel!(fmb)
+    a1 = axes(dest)
+    all(a -> axes(a) == axes(dest), destinations) ||
+        error("Cannot fuse broadcast expressions with unequal broadcast axes")
+    CI = CartesianIndices(axes(dest))
+    CUDA.@cuda threads = (nthreads) blocks = (nblocks) fused_copyto_kernel!(
+        fmb,
+        CI,
+    )
     return nothing
 end
-function fused_copyto_kernel!(fmb::MBF.FusedMultiBroadcast)
+import Base.Broadcast
+function fused_copyto_kernel!(fmb::MBF.FusedMultiBroadcast, CI)
     (; pairs) = fmb
     dest = first(pairs).first
     nitems = length(dest)
     idx = CUDA.threadIdx().x + (CUDA.blockIdx().x - 1) * CUDA.blockDim().x
     if idx ≤ nitems
-        MBF.rcopyto_at!(pairs, idx)
+        MBF.rcopyto_at!(pairs, CI[idx])
     end
     return nothing
 end

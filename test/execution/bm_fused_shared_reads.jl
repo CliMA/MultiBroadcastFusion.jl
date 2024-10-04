@@ -38,7 +38,8 @@ problem_size = (50, 5, 5, 6, 5400)
 array_size = problem_size # array
 X = get_arrays(:x, AType, bm.float_type, array_size)
 Y = get_arrays(:y, AType, bm.float_type, array_size)
-test_kernel!(;
+test_kernel!(
+    use_cuda;
     fused! = perf_kernel_shared_reads_fused!,
     unfused! = perf_kernel_shared_reads_unfused!,
     X,
@@ -66,7 +67,8 @@ push_benchmark!(
 array_size = (prod(problem_size),) # vector
 X = get_arrays(:x, AType, bm.float_type, array_size)
 Y = get_arrays(:y, AType, bm.float_type, array_size)
-test_kernel!(;
+test_kernel!(
+    use_cuda;
     fused! = perf_kernel_shared_reads_fused!,
     unfused! = perf_kernel_shared_reads_unfused!,
     X,

@@ -39,15 +39,35 @@ steps:
 
       - label: "CPU tests"
         key: tests_cpu
-        command: "julia --color=yes --project=.buildkite test/runtests.jl"
+        command: "julia --color=yes --check-bounds=yes --project=.buildkite test/runtests.jl"
 
       - label: "CUDA tests"
         key: tests_cuda
         command:
           - "julia --project=.buildkite -e 'using CUDA; CUDA.versioninfo()'"
+          - "julia --color=yes --check-bounds=yes --project=.buildkite test/runtests.jl"
+        env:
+          USE_CUDA: "true"
+        agents:
+          slurm_gpus: 1
+
+  - group: "Benchmarks"
+    steps:
+
+      - label: "CPU benchmarks"
+        key: bm_cpu
+        command: "julia --color=yes --project=.buildkite test/runtests.jl"
+        env:
+          PERFORM_BENCHMARK: "true"
+
+      - label: "CUDA benchmarks"
+        key: bm_cuda
+        command:
+          - "julia --project=.buildkite -e 'using CUDA; CUDA.versioninfo()'"
           - "julia --color=yes --project=.buildkite test/runtests.jl"
         env:
           USE_CUDA: "true"
+          PERFORM_BENCHMARK: "true"
         agents:
           slurm_gpus: 1
 
