@@ -2,9 +2,9 @@
 @make_fused fused_direct FusedMultiBroadcast fused_direct
 @make_fused fused_assemble FusedMultiBroadcast fused_assemble
 
-struct CPU end
-struct GPU end
-device(x::AbstractArray) = CPU()
+struct MBF_CPU end
+struct MBF_CUDA end
+device(x::AbstractArray) = MBF_CPU()
 
 function Base.copyto!(fmb::FusedMultiBroadcast)
     pairs = fmb.pairs # (Pair(dest1, bc1),Pair(dest2, bc2),...)
@@ -26,7 +26,7 @@ Base.@propagate_inbounds rcopyto_at!(pairs::Tuple{<:Any}, i...) =
 @inline rcopyto_at!(pairs::Tuple{}, i...) = nothing
 
 # This is better than the baseline.
-function fused_copyto!(fmb::FusedMultiBroadcast, ::CPU)
+function fused_copyto!(fmb::FusedMultiBroadcast, ::MBF_CPU)
     (; pairs) = fmb
     destinations = map(x -> x.first, pairs)
     ei = if eltype(destinations) <: Vector
@@ -44,7 +44,7 @@ end
 
 # This should, in theory be better, but it seems like inlining is
 # failing somewhere.
-# function fused_copyto!(fmb::FusedMultiBroadcast, ::CPU)
+# function fused_copyto!(fmb::FusedMultiBroadcast, ::MBF_CPU)
 #     (; pairs) = fmb
 #     destinations = map(x -> x.first, pairs)
 #     ei = if eltype(destinations) <: Vector
