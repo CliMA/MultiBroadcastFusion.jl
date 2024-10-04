@@ -4,9 +4,9 @@ import CUDA, Adapt
 import MultiBroadcastFusion as MBF
 import MultiBroadcastFusion: fused_copyto!
 
-MBF.device(x::CUDA.CuArray) = MBF.GPU()
+MBF.device(x::CUDA.CuArray) = MBF.MBF_CUDA()
 
-function fused_copyto!(fmb::MBF.FusedMultiBroadcast, ::MBF.GPU)
+function fused_copyto!(fmb::MBF.FusedMultiBroadcast, ::MBF.MBF_CUDA)
     (; pairs) = fmb
     dest = first(pairs).first
     nitems = length(parent(dest))

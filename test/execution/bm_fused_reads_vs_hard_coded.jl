@@ -10,7 +10,7 @@ import MultiBroadcastFusion as MBF
 # =========================================== hard-coded implementations
 perf_kernel_hard_coded!(X, Y) = perf_kernel_hard_coded!(X, Y, MBF.device(X.x1))
 
-function perf_kernel_hard_coded!(X, Y, ::MBF.CPU)
+function perf_kernel_hard_coded!(X, Y, ::MBF.MBF_CPU)
     (; x1, x2, x3, x4) = X
     (; y1, y2, y3, y4) = Y
     @inbounds for i in eachindex(x1)
@@ -24,7 +24,7 @@ end
 @static get(ENV, "USE_CUDA", nothing) == "true" && using CUDA
 use_cuda = @isdefined(CUDA) && CUDA.has_cuda() # will be true if you first run `using CUDA`
 @static if use_cuda
-    function perf_kernel_hard_coded!(X, Y, ::MBF.GPU)
+    function perf_kernel_hard_coded!(X, Y, ::MBF.MBF_CUDA)
         x1 = X.x1
         nitems = length(parent(x1))
         max_threads = 256 # can be higher if conditions permit
