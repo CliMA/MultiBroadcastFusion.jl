@@ -86,3 +86,27 @@ end
           MBF.linefilter!(expr_out)
     @test MBF.fused_assemble(expr_in, :tup) == expr_out
 end
+
+@testset "fused_assemble - simple loop with alias" begin
+    expr_in = quote
+        for i in 1:10
+            z2 = x2
+            @. y1 = x1 + z2 + x3 + x4
+            z4 = x4
+            @. y2 = x2 + x3 + z4 + x5
+        end
+    end
+
+    expr_out = quote
+        tup = ()
+        for i in 1:10
+            tup = (tup..., Pair(y1, Base.broadcasted(+, x1, x2, x3, x4)))
+            tup = (tup..., Pair(y2, Base.broadcasted(+, x2, x3, x4, x5)))
+        end
+        tup
+    end
+
+    @test MBF.linefilter!(MBF.fused_assemble(expr_in, :tup)) ==
+          MBF.linefilter!(expr_out)
+    @test MBF.fused_assemble(expr_in, :tup) == expr_out
+end
