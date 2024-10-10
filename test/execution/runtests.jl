@@ -1,6 +1,8 @@
 #=
 using Revise; include(joinpath("test", "execution", "runtests.jl"))
 =#
+using Test
+using SafeTestsets
 
 #! format: off
 @safetestset "fused_shared_reads" begin; @time include("bm_fused_shared_reads.jl"); end
