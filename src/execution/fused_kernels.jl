@@ -7,23 +7,40 @@ struct MBF_CUDA end
 device(x::AbstractArray) = MBF_CPU()
 
 function Base.copyto!(fmb::FusedMultiBroadcast)
-    pairs = fmb.pairs # (Pair(dest1, bc1),Pair(dest2, bc2),...)
+    # Since we intercept Base.copyto!, we have not yet
+    # called Base.Broadcast.instantiate (as this is done
+    # in materialize, which has been stripped away), so,
+    # let's call it here.
+    fmb′ = FusedMultiBroadcast(
+        map(fmb.pairs) do p
+            Pair(p.first, Base.Broadcast.instantiate(p.second))
+        end,
+    )
+    (; pairs) = fmb′ # (Pair(dest1, bc1),Pair(dest2, bc2),...)
     dest = first(pairs).first
-    fused_copyto!(fmb, device(dest))
+    fused_copyto!(fmb′, device(dest))
 end
 
-Base.@propagate_inbounds function rcopyto_at!(pair::Pair, i...)
+Base.@propagate_inbounds function rcopyto_at!(
+    pair::Pair,
+    i::Vararg{T},
+) where {T}
     dest, src = pair.first, pair.second
     @inbounds dest[i...] = src[i...]
     return nothing
 end
-Base.@propagate_inbounds function rcopyto_at!(pairs::Tuple, i...)
+Base.@propagate_inbounds function rcopyto_at!(
+    pairs::Tuple,
+    i::Vararg{T},
+) where {T}
     rcopyto_at!(first(pairs), i...)
     rcopyto_at!(Base.tail(pairs), i...)
 end
-Base.@propagate_inbounds rcopyto_at!(pairs::Tuple{<:Any}, i...) =
-    rcopyto_at!(first(pairs), i...)
-@inline rcopyto_at!(pairs::Tuple{}, i...) = nothing
+Base.@propagate_inbounds rcopyto_at!(
+    pairs::Tuple{<:Any},
+    i::Vararg{T},
+) where {T} = rcopyto_at!(first(pairs), i...)
+@inline rcopyto_at!(pairs::Tuple{}, i::Vararg{T}) where {T} = nothing
 
 # This is better than the baseline.
 function fused_copyto!(fmb::FusedMultiBroadcast, ::MBF_CPU)
@@ -39,6 +56,7 @@ function fused_copyto!(fmb::FusedMultiBroadcast, ::MBF_CPU)
             dest[i] = bc[i]
         end
     end
+    return destinations
 end
 
 
