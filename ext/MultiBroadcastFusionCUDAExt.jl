@@ -8,8 +8,8 @@ MBF.device(x::CUDA.CuArray) = MBF.MBF_CUDA()
 
 function fused_copyto!(fmb::MBF.FusedMultiBroadcast, ::MBF.MBF_CUDA)
     (; pairs) = fmb
-    dest = first(pairs).first
-    destinations = map(p -> p.first, pairs)
+    destinations = first(pairs)
+    dest = first(destinations)
     all(a -> axes(a) == axes(dest), destinations) ||
         error("Cannot fuse broadcast expressions with unequal broadcast axes")
     nitems = length(parent(dest))
@@ -29,13 +29,14 @@ import Base.Broadcast
 function fused_copyto_kernel!(fmb::MBF.FusedMultiBroadcast, CI)
     @inbounds begin
         (; pairs) = fmb
-        dest = first(pairs).first
+        destinations = first(pairs)
+        bcs = last(pairs)
         nitems = length(dest)
         idx =
             CUDA.threadIdx().x +
             (CUDA.blockIdx().x - Int32(1)) * CUDA.blockDim().x
         if 1 ≤ idx ≤ nitems
-            MBF.rcopyto_at!(pairs, CI[idx])
+            MBF.rcopyto_at!(destinations, bcs, CI[idx])
         end
     end
     return nothing
@@ -59,11 +60,9 @@ function Adapt.adapt_structure(
     to::CUDA.KernelAdaptor,
     fmbc::MBF.FusedMultiBroadcast,
 )
-    MBF.FusedMultiBroadcast(map(fmbc.pairs) do pair
-        dest = pair.first
-        src = pair.second
-        Pair(Adapt.adapt(to, dest), adapt_src(to, src))
-    end)
+    destinations = map(dest -> Adapt.adapt(to, dest), first(fmbc.pairs))
+    bcs = map(bc -> adapt_src(to, bc), last(fmbc.pairs))
+    MBF.FusedMultiBroadcast((destinations, bcs))
 end
 
 end

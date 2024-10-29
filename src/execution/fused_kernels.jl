@@ -11,66 +11,92 @@ function Base.copyto!(fmb::FusedMultiBroadcast)
     # called Base.Broadcast.instantiate (as this is done
     # in materialize, which has been stripped away), so,
     # let's call it here.
-    fmb′ = FusedMultiBroadcast(
-        map(fmb.pairs) do p
-            Pair(p.first, Base.Broadcast.instantiate(p.second))
-        end,
-    )
-    (; pairs) = fmb′ # (Pair(dest1, bc1),Pair(dest2, bc2),...)
-    dest = first(pairs).first
+    destinations = map(x -> x.first, fmb.pairs)
+    bcs = map(x -> x.second, fmb.pairs)
+    bcs = map(Base.Broadcast.instantiate, bcs)
+    fmb′ = FusedMultiBroadcast((destinations, bcs))
+    dest = first(destinations)
     fused_copyto!(fmb′, device(dest))
 end
 
-Base.@propagate_inbounds function rcopyto_at!(
-    pair::Pair,
-    i::Vararg{T},
-) where {T}
-    dest, src = pair.first, pair.second
-    @inbounds dest[i...] = src[i...]
+Base.@propagate_inbounds function rcopyto_at!(dest, bc, i::Vararg{T}) where {T}
+    @inbounds dest[i...] = bc[i...]
     return nothing
 end
 Base.@propagate_inbounds function rcopyto_at!(
-    pairs::Tuple,
+    dest::Tuple,
+    bcs::Tuple,
     i::Vararg{T},
 ) where {T}
-    rcopyto_at!(first(pairs), i...)
-    rcopyto_at!(Base.tail(pairs), i...)
+    rcopyto_at!(first(dest), first(bcs), i...)
+    rcopyto_at!(Base.tail(dest), Base.tail(bcs), i...)
 end
 Base.@propagate_inbounds rcopyto_at!(
-    pairs::Tuple{<:Any},
+    dest::Tuple{<:Any},
+    bcs::Tuple{<:Any},
     i::Vararg{T},
-) where {T} = rcopyto_at!(first(pairs), i...)
-@inline rcopyto_at!(pairs::Tuple{}, i::Vararg{T}) where {T} = nothing
+) where {T} = rcopyto_at!(first(dest), first(bcs), i...)
+@inline rcopyto_at!(::Tuple{}, ::Tuple{}, i::Vararg{T}) where {T} = nothing
+
+Base.@propagate_inbounds function rcopyto_at!(dest, bc, i::Vararg{T}) where {T}
+    @inbounds dest[i...] = bc[i...]
+    return nothing
+end
+
+@generated function generated_rcopyto_at!(
+    destinations,
+    bcs,
+    i,
+    ::Val{N},
+) where {N}
+    return quote
+        Base.Cartesian.@nexprs $N ξ -> begin
+            @inbounds destinations[ξ][i] = bcs[ξ][i]
+        end
+    end
+end
+
+@generated function revert_fusion!(destinations, bcs, ei, ::Val{N}) where {N}
+    return quote
+        Base.Cartesian.@nexprs $N ξ -> begin
+            dest = destinations[ξ]
+            bc = bcs[ξ]
+            @simd for i in ei
+                @inbounds dest[i] = bc[i]
+            end
+        end
+    end
+end
 
 # This is better than the baseline.
 function fused_copyto!(fmb::FusedMultiBroadcast, ::MBF_CPU)
     (; pairs) = fmb
-    destinations = map(x -> x.first, pairs)
+    destinations = first(pairs)
+    bcs = last(pairs)
     ei = if eltype(destinations) <: Vector
         eachindex(destinations...)
     else
         eachindex(IndexCartesian(), destinations...)
     end
-    for (dest, bc) in pairs
-        @inbounds @simd ivdep for i in ei
-            dest[i] = bc[i]
-        end
-    end
+    N = length(destinations)
+    # generated_rcopyto_at!(destinations, bcs, i, Val(N))
+    revert_fusion!(destinations, bcs, ei, Val(N))
     return destinations
 end
 
 
-# This should, in theory be better, but it seems like inlining is
-# failing somewhere.
+# This should (in theory) be better but it seems like
+# inlining or simd is failing somewhere.
 # function fused_copyto!(fmb::FusedMultiBroadcast, ::MBF_CPU)
 #     (; pairs) = fmb
-#     destinations = map(x -> x.first, pairs)
+#     destinations = first(pairs)
+#     bcs = last(pairs)
 #     ei = if eltype(destinations) <: Vector
 #         eachindex(destinations...)
 #     else
 #         eachindex(IndexCartesian(), destinations...)
 #     end
 #     @inbounds @simd ivdep for i in ei
-#         MBF.rcopyto_at!(pairs, i)
+#         rcopyto_at!(destinations, bcs, i)
 #     end
 # end
