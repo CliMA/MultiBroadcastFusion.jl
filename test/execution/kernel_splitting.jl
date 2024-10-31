@@ -2,7 +2,7 @@
 using TestEnv
 TestEnv.activate()
 using CUDA # (optional)
-using Revise; include(joinpath("test", "execution", "parameter_memory.jl"))
+using Revise; include(joinpath("test", "execution", "kernel_splitting.jl"))
 =#
 
 include("utils_test.jl")
@@ -49,9 +49,7 @@ function perf_kernel_shared_reads_fused!(X, Y)
         @. y3 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 + x2 + x3
         @. y4 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4
         @. y1 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1
-        @. y2 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 + x2
-        @. y3 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 + x2 + x3
-        @. y4 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4
+        @. y2 = x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 * x2 + x3 + x4 + x1 + x2 # breaks on A100 due to too much parameter memory
     end
 end
 #! format: on
@@ -66,18 +64,8 @@ problem_size = (50, 5, 5, 6, 5400)
 array_size = problem_size # array
 X = get_arrays(:x, AType, bm.float_type, array_size)
 Y = get_arrays(:y, AType, bm.float_type, array_size)
-@testset "Test breaking case with parameter memory" begin
-    if use_cuda
-        try
-            perf_kernel_shared_reads_fused!(X, Y)
-            error("The above kernel should error")
-        catch e
-            @test startswith(
-                e.msg,
-                "Kernel invocation uses too much parameter memory.",
-            )
-        end
-    end
+@testset "Test kernel splitting with too much parameter memory" begin
+    use_cuda && perf_kernel_shared_reads_fused!(X, Y)
 end
 
 nothing
