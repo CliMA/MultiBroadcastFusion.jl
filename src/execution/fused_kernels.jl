@@ -1,6 +1,7 @@
 @make_type FusedMultiBroadcast
 @make_fused fused_direct FusedMultiBroadcast fused_direct
 @make_fused fused_assemble FusedMultiBroadcast fused_assemble
+@make_get_fused fused_direct FusedMultiBroadcast get_fused_direct
 
 struct MBF_CPU end
 struct MBF_CUDA end

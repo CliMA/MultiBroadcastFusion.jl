@@ -6,23 +6,75 @@ import MultiBroadcastFusion: fused_copyto!
 
 MBF.device(x::CUDA.CuArray) = MBF.MBF_CUDA()
 
+include("parameter_memory.jl")
+
+"""
+    partition_kernels(fmb;
+        fused_broadcast_constructor = MBF.FusedMultiBroadcast,
+        args_func::Function = 
+    )
+
+Splits fused broadcast kernels into a vector
+of kernels, based on parameter memory limitations.
+
+We first attempt to fuse
+    1:N, 1:N-1, 1:N-2, ... until we fuse 1:N-k
+Next, we attempt to fuse
+    N-k+1:N, N-k+1:N-1, N-k+1:N-2, ...
+
+And so forth.
+"""
+function partition_kernels(
+    fmb,
+    fused_broadcast_constructor = MBF.FusedMultiBroadcast,
+    args_func::Function = fused_multibroadcast_args,
+)
+    plim = get_param_lim()
+    usage = param_usage_args(args_func(fmb))
+    n_bins = 1
+    fmbs = (fmb,)
+    usage ≤ plim && return fmbs
+    fmbs_split = []
+    N = length(fmb.pairs)
+    i_start = 1
+    i_stop = N
+    while i_stop ≠ i_start
+        ith_pairs = fmb.pairs[i_start:i_stop]
+        ith_fmb = fused_broadcast_constructor(ith_pairs)
+        if param_usage_args(args_func(ith_fmb)) ≤ plim # first iteration will likely fail (ambitious)
+            push!(fmbs_split, ith_fmb)
+            i_stop == N && break
+            i_start = i_stop + 1 # N on first iteration
+            i_stop = N # reset i_stop
+        else
+            i_stop = i_stop - 1
+        end
+    end
+    return fmbs_split
+end
+
 function fused_copyto!(fmb::MBF.FusedMultiBroadcast, ::MBF.MBF_CUDA)
-    (; pairs) = fmb
-    dest = first(pairs).first
-    destinations = map(p -> p.first, pairs)
-    all(a -> axes(a) == axes(dest), destinations) ||
-        error("Cannot fuse broadcast expressions with unequal broadcast axes")
-    nitems = length(parent(dest))
-    CI = CartesianIndices(axes(dest))
-    kernel =
-        CUDA.@cuda always_inline = true launch = false fused_copyto_kernel!(
-            fmb,
-            CI,
+    destinations = map(p -> p.first, fmb.pairs)
+    fmbs = partition_kernels(fmb)
+    for fmb in fmbs
+        (; pairs) = fmb
+        dest = first(pairs).first
+        dests = map(p -> p.first, pairs)
+        all(a -> axes(a) == axes(dest), dests) || error(
+            "Cannot fuse broadcast expressions with unequal broadcast axes",
         )
-    config = CUDA.launch_configuration(kernel.fun)
-    threads = min(nitems, config.threads)
-    blocks = cld(nitems, threads)
-    kernel(fmb, CI; threads, blocks)
+        nitems = length(parent(dest))
+        CI = CartesianIndices(axes(dest))
+        kernel =
+            CUDA.@cuda always_inline = true launch = false fused_copyto_kernel!(
+                fmb,
+                CI,
+            )
+        config = CUDA.launch_configuration(kernel.fun)
+        threads = min(nitems, config.threads)
+        blocks = cld(nitems, threads)
+        kernel(fmb, CI; threads, blocks)
+    end
     return destinations
 end
 import Base.Broadcast
