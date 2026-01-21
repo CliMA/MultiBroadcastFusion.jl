@@ -12,6 +12,11 @@ function transform_assemble(e::Expr, sym)
         margs = materialize_args(se)
         subexpr = :($sym = ($sym..., Pair($(margs[1]), $(margs[2]))))
         subexpr
+    elseif e.head == Symbol(".=")
+        se = code_lowered_single_expression(e)
+        margs = materialize_args(se)
+        subexpr = :($sym = ($sym..., Pair($(margs[1]), $(margs[2]))))
+        subexpr
     else
         Expr(
             transform_assemble(e.head, sym),
@@ -90,7 +95,7 @@ function check_restrictions_assemble(expr::Expr)
         arg isa LineNumberNode && continue
         s_error = if arg isa QuoteNode
             "Dangling symbols are not allowed inside fused blocks"
-        elseif arg.head == :call
+        elseif arg.head == :call && !(isa_dot_op(arg[1]))
             "Function calls are not allowed inside fused blocks"
         elseif arg.head == :(=)
             "Non-broadcast assignments are not allowed inside fused blocks"
@@ -109,6 +114,13 @@ function check_restrictions_assemble(expr::Expr)
         elseif arg.head == :if
             check_restrictions(arg.args[2])
         elseif arg.head == :macrocall && arg.args[1] == Symbol("@inbounds")
+        elseif arg.head == :call && isa_dot_op(arg.args[1])
+            # Allows for :(a .+ foo(b))
+            # where foo(b) could be a getter to an array.
+            # This technically opens the door to incorrectness,
+            # as foo could change the pointer of `b` to something else
+            # however, this seems unlikely.
+        elseif isa_dot_op(arg.head) # dot function call
         else
             @show dump(arg)
             error("Uncaught edge case")

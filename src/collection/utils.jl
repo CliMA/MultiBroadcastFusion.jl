@@ -31,6 +31,30 @@ end
 
 function materialize_args(expr::Expr)
     @assert expr.head == :call
-    @assert expr.args[1] == :(Base.materialize!)
-    return (expr.args[2], expr.args[3])
+    if expr.args[1] == :(Base.materialize!)
+        return (expr.args[2], expr.args[3])
+    elseif expr.args[1] == :(Base.materialize)
+        return (expr.args[2], expr.args[2])
+    else
+        error("Uncaught edge case.")
+    end
 end
+
+const dot_ops = (
+    Symbol(".+"),
+    Symbol(".-"),
+    Symbol(".*"),
+    Symbol("./"),
+    Symbol(".="),
+    Symbol(".=="),
+    Symbol(".≠"),
+    Symbol(".^"),
+    Symbol(".!="),
+    Symbol(".>"),
+    Symbol(".<"),
+    Symbol(".>="),
+    Symbol(".<="),
+    Symbol(".≤"),
+    Symbol(".≥"),
+)
+isa_dot_op(op) = any(x -> op == x, dot_ops)
