@@ -12,6 +12,11 @@ function transform(e::Expr)
         margs = materialize_args(se)
         subexpr = :(Pair($(margs[1]), $(margs[2])))
         subexpr
+    elseif e.head == Symbol(".=")
+        se = code_lowered_single_expression(e)
+        margs = materialize_args(se)
+        subexpr = :(Pair($(margs[1]), $(margs[2])))
+        subexpr
     else
         Expr(transform(e.head), transform.(e.args)...)
     end
@@ -82,7 +87,7 @@ function check_restrictions(expr::Expr)
             "Loops are not allowed inside fused blocks"
         elseif _expr.head == :if
             "If-statements are not allowed inside fused blocks"
-        elseif _expr.head == :call
+        elseif _expr.head == :call && !(isa_dot_op(_expr.args[1]))
             "Function calls are not allowed inside fused blocks"
         elseif _expr.head == :(=)
             "Non-broadcast assignments are not allowed inside fused blocks"
@@ -95,6 +100,13 @@ function check_restrictions(expr::Expr)
         end
         isempty(s_error) || error(s_error)
         if _expr.head == :macrocall && _expr.args[1] == Symbol("@__dot__")
+        elseif _expr.head == :call && isa_dot_op(_expr.args[1])
+            # Allows for :(a .+ foo(b))
+            # where foo(b) could be a getter to an array.
+            # This technically opens the door to incorrectness,
+            # as foo could change the pointer of `b` to something else
+            # however, this seems unlikely.
+        elseif isa_dot_op(_expr.head) # dot function call
         else
             @show dump(_expr)
             error("Uncaught edge case")

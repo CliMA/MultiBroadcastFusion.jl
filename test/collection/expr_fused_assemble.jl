@@ -22,6 +22,25 @@ import MultiBroadcastFusion as MBF
     @test MBF.fused_assemble(expr_in, :tup) == expr_out
 end
 
+#! format: off
+@testset "fused_assemble - simple sequential, explicit dots" begin
+    expr_in = quote
+        y1 .= x1 .+ x2 .+ x3 .+ x4
+        y2 .= x2 .+ x3 .+ x4 .+ x5
+    end
+
+    expr_out = quote
+        tup = ()
+        tup = (tup..., Pair(y1, Base.broadcasted(+, Base.broadcasted(+, Base.broadcasted(+, x1, x2), x3), x4)))
+        tup = (tup..., Pair(y2, Base.broadcasted(+, Base.broadcasted(+, Base.broadcasted(+, x2, x3), x4), x5)))
+        tup
+    end
+
+    @test MBF.linefilter!(MBF.fused_assemble(expr_in, :tup)) ==
+          MBF.linefilter!(expr_out)
+    @test MBF.fused_assemble(expr_in, :tup) == expr_out
+end
+#! format: on
 
 @testset "fused_assemble - loop" begin
     expr_in = quote
